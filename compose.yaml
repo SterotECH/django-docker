@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app
+      - static-volume:/vol/web/static
+      - media-volume:/vol/web/media
+    command: >
+      sh -c "python manage.py wait_for_db
+            python manage.py collectstatic --noinput &&
+            python manage.py migrate &&
+            python manage.py runserver 0.0.0.0:8000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=devdb
+      - DB_USER=stero
+      - DB_PASS=changeme
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=devdb
+      - POSTGRES_USER=stero
+      - POSTGRES_PASSWORD=changeme
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
+    volumes:
+      - dev-db-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  nginx:
+    build: ./nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - static-volume:/vol/web/static
+      - media-volume:/vol/web/media
+    depends_on:
+      - app
+
+  celery:
+    build: .
+    command: celery -A backend worker --loglevel=info
+    depends_on:
+      - redis
+    volumes:
+      - ./app:/app
+
+  celery-beat:
+    build: .
+    command: celery -A backend beat --loglevel=info
+    depends_on:
+      - redis
+    volumes:
+      - ./app:/app
+volumes:
+  dev-db-data:
+  static-volume:
+  media-volume:
+  redis-data:
