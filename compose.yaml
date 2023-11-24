@@ -52,7 +52,7 @@ services:
       - app
 
   celery:
-    build: .
+    image: backend-app
     command: celery -A backend worker --loglevel=info
     depends_on:
       - redis
@@ -60,7 +60,7 @@ services:
       - ./app:/app
 
   celery-beat:
-    build: .
+    image: backend-app
     command: celery -A backend beat --loglevel=info
     depends_on:
       - redis
