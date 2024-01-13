@@ -2,11 +2,13 @@ version: '3.8'
 
 services:
   app:
-    container_name: django
+    container_name: app
     build:
       context: .
     ports:
-      - 8000:8000
+      - "8000:8000"
+    expose:
+      - 8000
     volumes:
       - ./app:/app
       - static-volume:/vol/web/static
@@ -15,7 +17,7 @@ services:
       sh -c "python manage.py wait_for_db
             python manage.py collectstatic --noinput &&
             python manage.py migrate &&
-            python manage.py runserver 0.0.0.0:8000"
+            uvicorn backend.asgi:application --host 0.0.0.0 --port 8000 --log-level debug --reload"
     environment:
       - DB_HOST=db
       - DB_NAME=devdb
@@ -26,7 +28,7 @@ services:
       - redis
 
   db:
-    container_name: postgres
+    container_name: db
     image: postgres:15-alpine
     environment:
       - POSTGRES_DB=devdb
@@ -36,16 +38,18 @@ services:
     volumes:
       - dev-db-data:/var/lib/postgresql/data
     ports:
-      - 3600:5432
+      - "3600:5432"
 
   redis:
+    container_name: redis
     image: redis:latest
     ports:
-      - 6379:6379
+      - "6379:6379"
     volumes:
       - redis-data:/data
 
   nginx:
+    container_name: nginx
     build: ./nginx
     ports:
       - "8080:80"
@@ -56,21 +60,20 @@ services:
       - app
 
   celery:
+    container_name: celery
     image: backend-app
-    command: celery -A backend worker -l info
+    command: celery -A backend worker --loglevel=info
+    environment:
+      - DB_HOST=db
+      - DB_NAME=devdb
+      - DB_USER=stero
+      - DB_PASS=changeme
     depends_on:
       - redis
     volumes:
       - ./app:/app
-
-  celery-beat:
-    container_name: celery_beat
-    image: backend-app
-    command: celery -A backend beat --loglevel=info
-    depends_on:
-      - redis
-    volumes:
-      - ./app:/app
+      - static-volume:/vol/web/static
+      - media-volume:/vol/web/media
 
 volumes:
   dev-db-data:
