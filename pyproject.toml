@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "django-template"
 version = "0.1.0"
-description = ""
+description = "Django Docker Startup template by Stero tECH"
 authors = ["Samuel Agyei <88740526+SterotECH@users.noreply.github.com>"]
 license = "MIT License"
 readme = "README.md"

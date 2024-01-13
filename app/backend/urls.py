@@ -5,6 +5,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 ]
 
+websocket_urlpatterns = [
+
+]
+
 if settings.DEBUG:
     from django.conf.urls.static import static
     urlpatterns += static(

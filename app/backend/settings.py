@@ -4,8 +4,8 @@ from pathlib import Path
 from django.templatetags.static import static
 from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
+from django.core.management.utils import get_random_secret_key
 import environ
-# reading .env file
 environ.Env.read_env()
 
 ######################################################################
@@ -14,9 +14,11 @@ environ.Env.read_env()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "django-insecure-yven9*vd5-h=7a9pe=k0c1h9mr%-7-=us)2ygbh^_-pf+%lna9"
+SECRET_KEY = os.environ.get('SECRET_KEY', get_random_secret_key())
 
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', False)
+
+LOCAL = os.environ.get('LOCAL', False)
 
 ROOT_URLCONF = "backend.urls"
 
@@ -31,13 +33,26 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Domains
 ######################################################################
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+]
 
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://0.0.0.0:8000',
-    'http://localhost:3001',
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://0.0.0.0:8000",
+    "http://localhost:3001",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://0.0.0.0:8000",
+    "http://localhost:3001",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -47,9 +62,10 @@ CORS_ALLOW_CREDENTIALS = True
 ######################################################################
 
 INSTALLED_APPS = [
-    "unfold",
+        "unfold",
     "unfold.contrib.filters",
     "unfold.contrib.import_export",
+    "unfold.contrib.simple_history",
     "unfold.contrib.forms",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -57,8 +73,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'django_filters',
+    "rest_framework",
+    "corsheaders",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
+    "rest_framework_simplejwt.token_blacklist",
     "import_export",
-    "django_celery_beat",
     'core.apps.CoreConfig',
 ]
 
@@ -68,13 +89,14 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "backend.middleware.ReadonlyExceptionHandlerMiddleware",
 ]
 
 ######################################################################
@@ -153,7 +175,7 @@ PASSWORD_HASHERS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = 'Africa/Accra'
 
 USE_I18N = True
 
@@ -166,15 +188,19 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_BASE_DIRS = BASE_DIR / "static"
 STATICFILES_DIRS = [STATICFILES_BASE_DIRS]
-STATIC_ROOT = "/vol/web/static"
+if LOCAL:
+    STATIC_ROOT = BASE_DIR / "local-cdn" / "static"
+else:
+    STATIC_ROOT = "/vol/web/static"
 
 MEDIA_URL = "media/"
 
-MEDIA_DIR = [
-    BASE_DIR / 'media'
-]
+MEDIA_DIR = [BASE_DIR / "media"]
 
-MEDIA_ROOT = "/vol/web/media"
+if LOCAL:
+    MEDIA_ROOT = BASE_DIR / "local-cdn" / "media"
+else:
+    MEDIA_ROOT = "/vol/web/media"
 
 
 ######################################################################
@@ -189,63 +215,143 @@ CACHES = {
         },
     }
 }
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("redis", 6379)],
+        },
+    },
+}
 
 CELERY_BROKER_URL = "redis://redis:6379/0"
 CELERY_RESULT_BACKEND = "redis://redis:6379/0"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
+LOGGING_FILEHANDLER = 'logging.FileHandler'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} [{levelname}] {module}: {name} - {message}',
+            'style': '{'
+        },
+        'simple': {
+            'format': '{asctime} [{levelname}] {message}',
+            'style': '{'
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose'
+        },
+        'file': {
+            'class': LOGGING_FILEHANDLER,
+            'filename': os.path.join(BASE_DIR, 'log/general.log'),
+            'formatter': 'verbose'
+        },
+        'debug_log_file': {
+            'level': 'DEBUG',
+            'class': LOGGING_FILEHANDLER,
+            'filename': os.path.join(BASE_DIR, 'log/debug.log'),
+            'formatter': 'verbose',
+        },
+        'error_log_file': {
+            'level': 'ERROR',
+            'class': LOGGING_FILEHANDLER,
+            'filename': os.path.join(BASE_DIR, 'log/error.log'),
+            'formatter': 'verbose',
+        },
+        'info_log_file': {
+            'level': 'INFO',
+            'class': LOGGING_FILEHANDLER,
+            'filename': os.path.join(BASE_DIR, 'log/info.log'),
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['debug_log_file', 'file', 'info_log_file', 'error_log_file', 'console'],
+            'level': os.environ.get('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': True,
+        },
+        'django': {
+            'handlers': ['error_log_file'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+    },
+}
 
 ######################################################################
 # Rest Framework
 ######################################################################
 REST_FRAMEWORK = {
-    'COERCE_DECIMAL_TO_STRING': False,
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "COERCE_DECIMAL_TO_STRING": False,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/day',
-        'user': '1000/day'
-    },
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle"
+    ],
+    "DEFAULT_THROTTLE_RATES": {"anon": "100/day", "user": "10000/day"},
+    "DEFAULT_PAGINATION_CLASS": "core.pagination.StandardResultSetPagination",
+    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
+    "SEARCH_PARAM": 'q'
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': True,
-    "AUTH_HEADER_TYPES": ("JWT", "Bearer"),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=60),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "AUTH_HEADER_TYPES": "JWT",
 }
 
-ADMINS = [
-    ('stero', 'agyeistero@gmail.com')
-]
+ADMINS = [("stero", "agyeistero@gmail.com")]
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_HOST_USER = '<email>'
-EMAIL_HOST_PASSWORD = '<password>'
-EMAIL_USE_TLS = True
-EMAIL_PORT = 587
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND')
+EMAIL_HOST = os.environ.get('EMAIL_HOST')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS')
+EMAIL_PORT = os.environ.get('EMAIL_PORT')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
 
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Edu Manage Pro",
+    "DESCRIPTION": "Django Docker Startup Template",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+        "displayOperationId": True,
+    },
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
+}
 
 ######################################################################
 # Unfold
 ######################################################################
 UNFOLD = {
-    "SITE_HEADER": "DJango Admin",
-    "SITE_TITLE": "DJango Admin",
+    "SITE_HEADER": "Stero Docker Admin",
+    "SITE_TITLE": "Stero Docker Admin",
+    "ENVIRONMENT": "backend.utils.environment_callback",
+    "DASHBOARD_CALLBACK": "backend.utils.dashboard_callback",
     "SITE_URL": "/",
     "SITE_ICON": None,
     "SCRIPTS": [
         lambda request: static("js/chart.min.js"),
-    ],
-    "STYLES": [
-        lambda request: static("css/styles.css"),
     ],
     "LOGIN": {
         "image": lambda r: static("images/login-bg.jpg"),
@@ -267,12 +373,12 @@ UNFOLD = {
 
     },
     "SIDEBAR": {
-        "show_search": True,  # Search in applications and models names
-        "show_all_applications": True,  # Dropdown with all applications and models
+        "show_search": True,
+        "show_all_applications": True,
         "navigation": [
             {
                 "title": _(""),
-                "separator": False,  # Top border
+                "separator": False,
                 "items": [
                     {
                         "title": _("Dashboard"),
@@ -288,6 +394,7 @@ UNFOLD = {
                         "title": _("Users"),
                         "icon": "person",
                         "link": reverse_lazy("admin:core_user_changelist"),
+                        "badge": "backend.utils.badge_callback",
                     },
                     {
                         "title": _("Groups"),

@@ -8,48 +8,7 @@ from django.db import models
 from unfold.contrib.forms.widgets import WysiwygWidget
 from unfold.decorators import action, display
 from django.utils.translation import gettext_lazy as _
-from django_celery_beat.models import (
-    ClockedSchedule,
-    CrontabSchedule,
-    IntervalSchedule,
-    PeriodicTask,
-    SolarSchedule,
-)
 from django.contrib.auth.models import Group
-
-
-admin.site.unregister(PeriodicTask)
-admin.site.unregister(IntervalSchedule)
-admin.site.unregister(CrontabSchedule)
-admin.site.unregister(SolarSchedule)
-admin.site.unregister(ClockedSchedule)
-admin.site.unregister(Group)
-
-
-@admin.register(PeriodicTask)
-class PeriodicTaskAdmin(ModelAdmin):
-    pass
-
-
-@admin.register(IntervalSchedule)
-class IntervalScheduleAdmin(ModelAdmin):
-    pass
-
-
-@admin.register(CrontabSchedule)
-class CrontabScheduleAdmin(ModelAdmin):
-    pass
-
-
-@admin.register(SolarSchedule)
-class SolarScheduleAdmin(ModelAdmin):
-    pass
-
-
-@admin.register(ClockedSchedule)
-class ClockedScheduleAdmin(ModelAdmin):
-    pass
-
 
 
 @admin.register(User)
@@ -82,7 +41,7 @@ class UserAdminModel(BaseUserAdmin, ModelAdmin):
         }),
         ('Personal Information', {
             'classes': ('wide',),
-            'fields': (('first_name','last_name'), ('other_name', 'contact'), 'user_type', ),
+            'fields': (('first_name','last_name'), ('other_name', 'user_type'),),
         }),
         ('Permissions', {
             'classes': ('wide',),
@@ -108,7 +67,7 @@ class UserAdminModel(BaseUserAdmin, ModelAdmin):
         }),
         ('Personal Information', {
             'classes': ('wide',),
-            'fields': (('first_name', 'last_name','other_name', 'contact'), 'user_type', ),
+            'fields': (('first_name', 'last_name','other_name', 'user_type'),  ),
         }),
         ('Permissions', {
             'classes': ('wide',),
