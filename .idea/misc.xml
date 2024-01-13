@@ -5,7 +5,7 @@
     <option name="enabledOnSave" value="true" />
     <option name="executionMode" value="BINARY" />
     <option name="pathToExecutable" value="$USER_HOME$/.pyenv/shims/black" />
-    <option name="sdkUUID" value="e1a467f3-7706-41a4-8d0e-5bd1d873bdae" />
+    <option name="sdkName" value="Remote Python 3.10.13 Docker Compose (app)" />
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Remote Python 3.10.13 Docker Compose (app)" project-jdk-type="Python SDK" />
   <component name="PythonCompatibilityInspectionAdvertiser">

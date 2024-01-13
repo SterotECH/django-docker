@@ -1,5 +1,5 @@
-FROM python:3.10-alpine
-LABEL MAINTAINER="Stero tECH" VERSION="1.0.0"
+FROM python:3.12-alpine
+LABEL MAINTAINER="Stero tECH" VERSION="2.0.0"
 
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -20,7 +20,7 @@ RUN apk add --update --no-cache --virtual .tmp-build-deps \
 RUN /py/bin/pip install poetry && \
     /py/bin/poetry config virtualenvs.create false && \
     /py/bin/poetry install --no-dev && \
-    if [ $DEV = "true" ]; \
+    if [ "$DEV" = "true" ]; \
     then /py/bin/poetry install;\
     fi &&\
     rm -rf /tmp &&\

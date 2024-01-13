@@ -1,12 +1,11 @@
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
-from rest_framework import status, serializers
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework import serializers
 from django.contrib import auth
-from .models import User as ModelUser
+from django.contrib.auth.hashers import make_password
+from core import models
 from core.signals import user_created
 User = get_user_model()
-UserModel = ModelUser
+UserModel = models.User
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
@@ -20,7 +19,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name','last_name', 'contact', 'user_type', 'password']
+        fields = ['id', 'username', 'email', 'first_name','last_name', 'user_type', 'password']
 
     def perform_create(self, user):
         user_created.send_robust(self.__class__, user=user)
@@ -82,4 +81,57 @@ class LoginSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name','last_name', 'last_name','user_type','email','contact']
+        fields = [
+            'id',
+            'username',
+            'first_name',
+            'last_name',
+            'user_type',
+            'email'
+        ]
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    password = serializers.CharField(
+        max_length=68,
+        min_length=6,
+        write_only=True,
+        style={'input_type': 'password'}
+    )
+    token = serializers.CharField()
+    password_confirm = serializers.CharField(
+        max_length=68,
+        min_length=6,
+        write_only=True,
+        style={'input_type': 'password'}
+    )
+
+    def validate_token(self, value):
+        try:
+            reset_token = models.Reset.objects.get(token=value)
+            user = User.objects.get(email=reset_token.email)
+        except (models.Reset.DoesNotExist, User.DoesNotExist):
+            raise serializers.ValidationError("Invalid token", code='404')
+
+        self.reset_token = reset_token
+        self.user = user
+        return value
+
+    def validate(self, data):
+        password = data.get('password')
+        password_confirm = data.get('password_confirm')
+
+        if password != password_confirm:
+            raise serializers.ValidationError("Passwords do not match")
+
+        return data
+
+    def save(self):
+        self.user.password = make_password(self.validated_data['password'])
+        self.user.save()
+
+        self.reset_token.delete()
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()

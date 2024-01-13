@@ -2,10 +2,11 @@ version: '3.8'
 
 services:
   app:
+    container_name: django
     build:
       context: .
     ports:
-      - "8000:8000"
+      - 8000:8000
     volumes:
       - ./app:/app
       - static-volume:/vol/web/static
@@ -25,6 +26,7 @@ services:
       - redis
 
   db:
+    container_name: postgres
     image: postgres:15-alpine
     environment:
       - POSTGRES_DB=devdb
@@ -33,11 +35,13 @@ services:
       - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
     volumes:
       - dev-db-data:/var/lib/postgresql/data
+    ports:
+      - 3600:5432
 
   redis:
     image: redis:latest
     ports:
-      - "6379:6379"
+      - 6379:6379
     volumes:
       - redis-data:/data
 
@@ -53,19 +57,21 @@ services:
 
   celery:
     image: backend-app
-    command: celery -A backend worker --loglevel=info
+    command: celery -A backend worker -l info
     depends_on:
       - redis
     volumes:
       - ./app:/app
 
   celery-beat:
+    container_name: celery_beat
     image: backend-app
     command: celery -A backend beat --loglevel=info
     depends_on:
       - redis
     volumes:
       - ./app:/app
+
 volumes:
   dev-db-data:
   static-volume:

@@ -56,37 +56,38 @@ class User(AbstractBaseUser, PermissionsMixin):
             "unique": _("A user with that email already exists."),
         }
     )
-    first_name = models.CharField(_("first name"), max_length=100)
-    last_name = models.CharField(_("last name"), max_length=100)
-    other_name = models.CharField(_("other name"), max_length=100, blank=True)
-    contact = models.CharField(
-        _("contact"), max_length=20, blank=True, unique=True)
-    user_type = models.CharField(_("User Type"), max_length=50, choices=USER_TYPE_CHOICES)
+    first_name = models.CharField(_("First Name"), max_length=100)
+    last_name = models.CharField(_("Last Name"), max_length=100)
+    other_name = models.CharField(_("Other Name"), max_length=100, blank=True)
+    user_type = models.CharField(_("User Type"), max_length=15, choices=USER_TYPE_CHOICES)
     is_active = models.BooleanField(
         _("active"),
-        default=False,
+        db_default=True,
         help_text=_(
             "Designates whether this user should be treated as active. "
             "Unselect this instead of deleting accounts."
         ),
     )
     is_staff = models.BooleanField(
-        _("staff status"),
-        default=False,
+        _("Staff Status"),
+        db_default=False,
         help_text=_("Designates whether the user can log into this admin site.")
     )
-    is_verified = models.BooleanField(default=False)
+    is_verified = models.BooleanField(db_default=True)
     date_joined = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     auth_provider = models.CharField(
-        max_length=255, blank=False,
-        null=False, default=AUTH_PROVIDERS.get('email'))
+        max_length=255,
+        blank=False,
+        null=False,
+        db_default=AUTH_PROVIDERS.get('email')
+    )
 
     objects = UserManager()
 
     EMAIL_FIELD = "email"
     USERNAME_FIELD = "username"
-    REQUIRED_FIELDS = ["first_name", "last_name",'contact', "email", "user_type"]
+    REQUIRED_FIELDS = ["first_name", "last_name", "email", "user_type"]
 
     def __str__(self) -> str:
         return f'{self.username} - {self.name}'
