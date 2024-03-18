@@ -8,7 +8,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.12"
-Django = "^5.0"
+Django = "^4.2"
 djangorestframework = "^3.14.0"
 djangorestframework-simplejwt = "^5.2.2"
 django-unfold = "^0.18.0"
